@@ -1,3 +1,5 @@
+
+
 import pygame
 import sys
 
@@ -38,6 +40,7 @@ def lvlGame():
     global camera,collision_sprites,water_group,mapFile
     player_group.update(dt, FPS, player_images)
     camera.update(player, window, all_sprites)
+    pygame.display.update()
 
 game_map = []
 def loadMap(mapFile):
@@ -64,7 +67,7 @@ def drawMap():
             if game_map[i][j] == '1':
                 water = Water(water_image,pos)
                 water_group.add(water)
-                collision_sprites.add(water)
+                #collision_sprites.add(water)
                 all_sprites.add(water)
 
 

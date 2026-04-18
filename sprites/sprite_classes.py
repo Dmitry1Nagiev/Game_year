@@ -1,6 +1,10 @@
 import pygame
-
-
+WHITE = 255,255,255
+class Diamond(pygame.sprite.Sprite):
+    def __init__(self,image,pos):
+        super().__init__()
+        self.image = image
+        self.rect = self.image.get_rect(center=pos)
 
 class Water(pygame.sprite.Sprite):
     def __init__(self,image,pos):
@@ -15,10 +19,12 @@ class Player(pygame.sprite.Sprite):
 
         self.pl_img = pygame.transform.scale(self.image, (65, 75))
         self.image = self.pl_img
+
         self.rect = self.image.get_rect(center=pos)
+
         self.pos = pygame.Vector2(self.rect.center)
         self.direction = pygame.Vector2()
-        self.speed = 400
+        self.speed = 30
         self.im_dir = 'right'
         self.frame = 0
         self.timer_anime = 0
