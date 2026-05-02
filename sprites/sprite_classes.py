@@ -1,5 +1,10 @@
 import pygame
 WHITE = 255,255,255
+import random
+
+
+
+
 class Diamond(pygame.sprite.Sprite):
     def __init__(self,image,pos):
         super().__init__()
@@ -94,8 +99,3 @@ class Player(pygame.sprite.Sprite):
         self.pl_img = pygame.transform.scale(self.image, (65, 75))
         self.image = self.pl_img
 
-class Zombi(pygame.sprite.Sprite):
-    def __init__(self,image,pos):
-        super().__init__()
-        self.image = image
-        self.rect = self.image.get_rect(center=pos)
