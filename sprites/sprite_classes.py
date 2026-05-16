@@ -29,7 +29,7 @@ class Player(pygame.sprite.Sprite):
 
         self.pos = pygame.Vector2(self.rect.center)
         self.direction = pygame.Vector2()
-        self.speed = 30
+        self.speed = 10
         self.im_dir = 'right'
         self.frame = 0
         self.timer_anime = 0
