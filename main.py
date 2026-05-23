@@ -34,7 +34,7 @@ def restart():
     collision_sprites = pygame.sprite.Group()
 
     # Создаем ОДНОГО игрока
-    player = Player(player_images['right'][0], (1000, 1000), collision_sprites)
+    player = Player(solid_image_walk_right['walk_horisont'][0], (1000, 1000), collision_sprites)
 
     # Создаем ОДНОГО зомби
     zombi = Zombi(zombi_image_idle[0], (800, 50))
@@ -48,21 +48,29 @@ def restart():
 
 
 def lvlGame():
-    global camera, collision_sprites, water_group, mapFile, player, zombi
+    global camera, collision_sprites, water_group, mapFile, player, zombi, clock
 
-    # Обновляем ОДНОГО игрока
-    player.update(dt, FPS, player_images)
 
-    # Обновляем ОДНОГО зомби (передаем одного игрока, а не список)
-    zombi.update(FPS, zombi_image_walk,zombi_image_attack, player)  # player, не players
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            return False
 
-    # Обновляем группу зомби (если используете)
-    zombi_group.update(FPS, zombi_image_walk,zombi_image_attack, player)
 
-    # Обновляем камеру
+
+    window.fill((0, 0, 0))
+
+
+    dt = clock.tick(FPS) / 1000.0
+
+
+    player.update(dt, FPS, solid_image_walk_down['walk_vertical'], solid_image_walk_right['walk_horisont'],solid_image_attack_down['attack'])
+    zombi.update(FPS, zombi_image_walk, zombi_image_attack, player)
+    zombi_group.update(FPS, zombi_image_walk, zombi_image_attack, player)
+
+
     camera.update(player, window, all_sprites)
+    camera.draw(window,all_sprites)
 
-    # Рисуем все спрайты
 
     pygame.display.update()
 
