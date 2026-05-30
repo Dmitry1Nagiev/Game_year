@@ -30,7 +30,7 @@ Bull_image = pygame.image.load('assets/images/niga_bulet.png')
 kamn_image = pygame.image.load('assets/images/Objects/raveh-removebg-preview.png')
 kusty_image = pygame.image.load('assets/images/Objects/kust-removebg-preview.png')
 bochka_image = pygame.image.load('assets/images/Objects/bochka-removebg-preview.png')
-aptechka_image_1 = pygame.image.load('assets/images/Objects/aptechko.jpg')
+aptechka_image_1 = pygame.image.load('assets/images/Objects/aptechko.png')
 aptechka_image = pygame.transform.scale(aptechka_image_1,(70,70))
 
 
@@ -50,6 +50,8 @@ buttons_images = load_image('assets/images/buttons_animation')
 button_up_img = buttons_images[0]
 
 button_down_img = buttons_images[2]
+button_down_img.set_colorkey((255,255,255))
+
 
 
 gun_sound.set_volume(0.3)

@@ -1,10 +1,11 @@
 import pygame
 import sys
 import random
+import pygwidgets
 import math
 from collections import deque
 
-# 1. Инициализация pygame и создание окна ДО импорта load
+# 1. Инициализация pygame и создание окна
 pygame.init()
 pygame.mixer.init()
 
@@ -15,28 +16,22 @@ pygame.display.set_caption('underverse')
 clock = pygame.time.Clock()
 FPS = 60
 
-# 2. Теперь можно импортировать модули, которые используют convert_alpha()
+# 2. Импорт модулей, использующих convert_alpha()
 from load import *
 from sprites.sprite_classes import *
 from camera import Camera
 
 # Константы
 BLACK = (0, 0, 0)
-
+WHITE = (255, 255, 255)
 HP_BAR_WIDTH = 300
 HP_BAR_HEIGHT = 30
 HP_BAR_X = 200
 HP_BAR_Y = 20
 WAVE_DELAY = 3.0
-
-MAP_SIZE = 8000
+MAP_SIZE = 2300
 
 # Глобальные переменные
-
-
-
-
-# Игровые переменные
 camera = None
 all_sprites = None
 bg_sprites = None
@@ -69,7 +64,8 @@ GRID_UPDATE_INTERVAL = 2.0
 mapFile = 'game_locations/test_player1.txt'
 mapFile_detail = 'game_locations/Mb_1_loc.txt'
 
-
+# Режим игры (по умолчанию "обычная")
+game_mode = "normal"   # "normal" или "show"
 
 # -------------------- Вспомогательные функции --------------------
 def loadMap(mapFile):
@@ -151,6 +147,7 @@ def restart():
     global camera, all_sprites, bg_sprites, water_group, collision_sprites, player_group, player
     global zombi_group, bull_group, hp, grav_group, trava_group, kysty_group, current_wave
     global enemies_alive, wave_in_progress, wave_timer, kamn_group, kustik_group, bochka_group, aptechka_group
+    global game_mode
 
     # Очистка старых спрайтов
     clear_all_groups()
@@ -172,8 +169,9 @@ def restart():
     zombi_group = pygame.sprite.Group()
 
     camera = Camera(MAP_SIZE, MAP_SIZE, WIDTH, HEIGHT)
-    player = Player(solid_image_walk_right['walk_horisont'][0], (1000, 1000),
+    player = Player(solid_image_walk_right['walk_horisont'][0], (MAP_SIZE//2, MAP_SIZE//2),
                     collision_sprites, bull_group, camera, all_sprites, gun_sound)
+
     hp = 100
     player_group.add(player)
     all_sprites.add(player)
@@ -190,17 +188,30 @@ def restart():
     wave_in_progress = False
     wave_timer = 2.0
 
+
 def spawn_zombies_for_wave():
-    global wave_in_progress, enemies_alive, current_wave
+    global wave_in_progress, enemies_alive, current_wave, game_mode
     spawn_bochka_in_front_of_player()
-    num_zombies = current_wave + 3
+
+    if game_mode == "show":
+        # Режим "Показ": всего 2 волны
+        if current_wave == 1:
+            num_zombies = 1
+        elif current_wave == 2:
+            num_zombies = 2
+        else:
+            # Не должно случиться, но на всякий случай
+            num_zombies = 0
+    else:  # normal
+        num_zombies = current_wave + 3
+
     for _ in range(num_zombies):
         angle = random.uniform(0, 2 * math.pi)
         distance = random.randint(300, 800)
         world_x = player.rect.centerx + distance * math.cos(angle)
         world_y = player.rect.centery + distance * math.sin(angle)
-        world_x = max(50, min(MAP_SIZE-50, world_x))
-        world_y = max(50, min(MAP_SIZE-50, world_y))
+        world_x = max(50, min(MAP_SIZE - 50, world_x))
+        world_y = max(50, min(MAP_SIZE - 50, world_y))
         new_zombie = Zombi(zombi_image_idle[0], (world_x, world_y))
         new_zombie.all_sprites = all_sprites
         new_zombie.player = player
@@ -286,7 +297,7 @@ def bfs(start, goal, grid):
 
 # -------------------- Игровой цикл --------------------
 def lvlGame():
-    global hp, attack_z, current_wave, enemies_alive, wave_in_progress, wave_timer
+    global hp, attack_z, current_wave, enemies_alive, wave_in_progress, wave_timer, game_mode
     dt = clock.tick(FPS) / 1000.0
 
     player.update(dt, FPS, solid_image_walk_down['walk_vertical'],
@@ -329,7 +340,7 @@ def lvlGame():
         attack_z = False
     if hp <= 0:
         loosing_life_sound.play()
-        return False  # смерть
+        return 'lose'   # смерть
 
     # Полоска здоровья
     color = (0,200,0) if hp >= 60 else (255,69,0) if hp > 30 else (139,0,0)
@@ -339,7 +350,8 @@ def lvlGame():
 
     # Волны
     if not wave_in_progress:
-        if current_wave <= 1:
+        max_wave = 2 if game_mode == "show" else 10
+        if current_wave <= max_wave:
             wave_timer += dt
             if wave_timer >= WAVE_DELAY:
                 if wave_sound: wave_sound.play()
@@ -350,22 +362,22 @@ def lvlGame():
             if win_music:
                 win_music.play()
             pygame.mixer.music.stop()
-            return False
+            return 'win'
     elif wave_in_progress and len(zombi_group) == 0 and enemies_alive == 0:
         wave_in_progress = False
         current_wave += 1
         print(f"Волна {current_wave - 1} пройдена")
-        if current_wave > 10:
-            # ПОБЕДА! После завершения 10 волны
+        max_wave = 2 if game_mode == "show" else 10
+        if current_wave > max_wave:
             if win_music:
                 win_music.play()
             pygame.mixer.music.stop()
-            return False
-
+            return 'win'
 
     pygame.display.update()
-    return True
+    return None
 
+# -------------------- Класс Zombi (остаётся без изменений) --------------------
 class Zombi(pygame.sprite.Sprite):
     def __init__(self, image, pos):
         global attack_z
@@ -544,9 +556,6 @@ class Zombi(pygame.sprite.Sprite):
             if self.state == 'walk' and frames:
                 self.image = frames[0]
 
-# -------------------- Кнопки и меню --------------------
-from pygame.locals import *
-WHITE = (255,255,255)
 
 class SimpleButton:
     STATE_IDLE = 'idle'
@@ -564,24 +573,24 @@ class SimpleButton:
         self.callback = callback
 
     def handleEvent(self, event):
-        if event.type not in (MOUSEMOTION, MOUSEBUTTONUP, MOUSEBUTTONDOWN):
+        if event.type not in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN):
             return False
         point_in = self.rect.collidepoint(event.pos)
         if self.state == SimpleButton.STATE_IDLE:
-            if event.type == MOUSEBUTTONDOWN and point_in:
+            if event.type == pygame.MOUSEBUTTONDOWN and point_in:
                 self.state = SimpleButton.STATE_ARMED
         elif self.state == SimpleButton.STATE_ARMED:
-            if event.type == MOUSEBUTTONUP and point_in:
+            if event.type == pygame.MOUSEBUTTONUP and point_in:
                 self.state = SimpleButton.STATE_IDLE
                 if self.callback:
                     self.callback()
                 return True
-            if event.type == MOUSEMOTION and not point_in:
+            if event.type == pygame.MOUSEMOTION and not point_in:
                 self.state = SimpleButton.STATE_DISAMED
         elif self.state == SimpleButton.STATE_DISAMED:
             if point_in:
                 self.state = SimpleButton.STATE_ARMED
-            elif event.type == MOUSEBUTTONUP:
+            elif event.type == pygame.MOUSEBUTTONUP:
                 self.state = SimpleButton.STATE_IDLE
         return False
 
@@ -589,32 +598,29 @@ class SimpleButton:
         img = self.surfaceDown if self.state == SimpleButton.STATE_ARMED else self.surfaceUp
         self.window.blit(img, self.loc)
 
-
 def draw_button_with_text(button, font, text, color=(0, 0, 0)):
-    # Сначала рисуем саму кнопку
     button.draw()
-
-    # Отображаем текст с чёрной обводкой для читаемости (опционально)
     text_surf = font.render(text, True, color)
     text_rect = text_surf.get_rect(center=button.rect.center)
-
-    # Если текст выходит за пределы кнопки, уменьшаем шрифт
     if text_rect.width > button.rect.width - 20 or text_rect.height > button.rect.height - 10:
         smaller_font = pygame.font.Font(None, int(font.get_height() * 0.7))
         text_surf = smaller_font.render(text, True, color)
         text_rect = text_surf.get_rect(center=button.rect.center)
-
     button.window.blit(text_surf, text_rect)
 
 def show_main_menu():
     font = pygame.font.Font(None, 48)
-    bg_color = (80,80,80)
+    bg_color = (80, 80, 80)
     bw, bh = 200, 80
-    y_start = HEIGHT//2 - 100
+    y_start = HEIGHT // 2 - 100
     spacing = 40
-    btn_play = SimpleButton(window, (WIDTH//2 - bw//2, y_start), button_up_img, button_down_img)
-    btn_settings = SimpleButton(window, (WIDTH//2 - bw//2, y_start+bh+spacing), button_up_img, button_down_img)
-    btn_quit = SimpleButton(window, (WIDTH//2 - bw//2, y_start+2*(bh+spacing)), button_up_img, button_down_img)
+
+    btn_play = SimpleButton(window, (WIDTH//2 - bw//2, y_start),
+                            button_up_img, button_down_img)
+    btn_settings = SimpleButton(window, (WIDTH//2 - bw//2, y_start + bh + spacing),
+                                button_up_img, button_down_img)
+    btn_quit = SimpleButton(window, (WIDTH//2 - bw//2, y_start + 2*(bh+spacing)),
+                            button_up_img, button_down_img)
 
     while True:
         for event in pygame.event.get():
@@ -626,6 +632,7 @@ def show_main_menu():
                 return 'settings'
             if btn_quit.handleEvent(event):
                 return 'quit'
+
         window.fill(bg_color)
         draw_button_with_text(btn_play, font, "ИГРАТЬ")
         draw_button_with_text(btn_settings, font, "НАСТРОЙКИ")
@@ -633,26 +640,118 @@ def show_main_menu():
         pygame.display.update()
         clock.tick(60)
 
+def show_win_menu():
+    font = pygame.font.Font(None, 48)
+    big_font = pygame.font.Font(None, 72)
+    bg_color = (80, 80, 80)
+    bw, bh = 200, 80
+    y_start = HEIGHT // 2 + 50
+    spacing = 40
+
+    btn_back_to_menu = SimpleButton(window, (WIDTH // 2 - bw // 2, y_start),
+                              button_up_img, button_down_img)
+
+    win_text = big_font.render("ПОБЕДА!", True, (255, 215, 0))
+    win_rect = win_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return 'quit'
+            if btn_back_to_menu.handleEvent(event):
+                win_music.stop()
+                return 'back'
+        window.fill(bg_color)
+        window.blit(win_text, win_rect)
+        draw_button_with_text(btn_back_to_menu, font, "Вернуться в меню")
+        pygame.display.update()
+        clock.tick(60)
+
+def show_loose_menu():
+    font = pygame.font.Font(None, 48)
+    big_font = pygame.font.Font(None, 72)
+    bg_color = (80, 80, 80)
+    bw, bh = 200, 80
+    y_start = HEIGHT // 2 + 50
+    spacing = 40
+
+    btn_back_to_menu = SimpleButton(window, (WIDTH // 2 - bw // 2, y_start),
+                                    button_up_img, button_down_img)
+
+    loose_text = big_font.render("ПРОИГРЫШ", True, (200, 0, 0))
+    loose_rect = loose_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return 'quit'
+            if btn_back_to_menu.handleEvent(event):
+                loosing_life_sound.stop()
+                return 'back'
+        window.fill(bg_color)
+        window.blit(loose_text, loose_rect)
+        draw_button_with_text(btn_back_to_menu, font, "Вернуться в меню")
+        pygame.display.update()
+        clock.tick(60)
+
+def show_settings_menu():
+    global game_mode
+    font = pygame.font.Font(None, 48)
+    bg_color = (80, 80, 80)
+    bw, bh = 200, 80
+    y_start = HEIGHT // 2 - 50
+    spacing = 40
+
+    btn_normal = SimpleButton(window, (WIDTH//2 - bw//2, y_start),
+                              button_up_img, button_down_img)
+    btn_show = SimpleButton(window, (WIDTH//2 - bw//2, y_start + bh + spacing),
+                            button_up_img, button_down_img)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return 'quit'
+            if btn_normal.handleEvent(event):
+                game_mode = "normal"
+                return 'back'
+            if btn_show.handleEvent(event):
+                game_mode = "show"
+                return 'back'
+
+        window.fill(bg_color)
+        draw_button_with_text(btn_normal, font, "Обычная")
+        draw_button_with_text(btn_show, font, "Показ")
+        pygame.display.update()
+        clock.tick(60)
+
 # -------------------- Запуск игры --------------------
 def run_game():
-    pygame.mixer_music.play(-1)
+    pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.3)
     restart()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                pygame.mixer_music.stop()
+                wave_sound.stop()
                 return False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                pygame.mixer_music.stop()
+                wave_sound.stop()
                 return True
-        if not lvlGame():
+        result = lvlGame()
+        if result == 'lose':
             pygame.mixer.music.stop()
+            show_loose_menu()
+            return True   # возврат в главное меню
+        elif result == 'win':
+            pygame.mixer.music.stop()
+            show_win_menu()
             return True
-
-
+        # result is None -> продолжаем игру
 
 # Предзагрузка изображений кнопок (из вашего load.py)
 button_frames = load_image('assets/images/buttons_animation')
-
 
 # Главный цикл
 main_active = True
@@ -661,9 +760,8 @@ while main_active:
     if choice == 'play':
         run_game()
     elif choice == 'settings':
-        print("Настройки")
-        pygame.time.wait(500)
-    else:
+        show_settings_menu()   # после выбора настроек возвращаемся в главное меню
+    else:  # 'quit'
         main_active = False
 
 pygame.quit()
